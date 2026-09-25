@@ -87,7 +87,7 @@ public class ConnectFour extends GameState {
 
     // ---- Position ----
     private final int[] board = new int[CELLS];   // EMPTY, 0 or 1
-    private int toMove = 0;
+    private int toMove = 0; //0 or 1
     private int winner = NONE;
     private long hash = Z_BASE;
 
@@ -163,10 +163,26 @@ public class ConnectFour extends GameState {
     @Override public GameState copy() { return new ConnectFour(this); }
     @Override public long hash() { return hash; }
 
-    /** Centre first, then corners, then edges. */
+    /** Centre first, then top */
     @Override
     public int orderHint(int move) {
         return (7+48 - move/7 - 16*Math.abs((move%7 - 3)));
+    }
+
+    @Override
+    public int evaluate() {
+        int score = 0;
+        for (int i=0; i<LINES.length; i++) {
+            int currentPlayerSpots = 0;
+            int otherPlayerSpots = 0;
+            for (int j=0; j<LINES[i].length; j++) {
+                if (board[LINES[i][j]] == toMove) {currentPlayerSpots++;}
+                if (board[LINES[i][j]] == 1 - toMove) {otherPlayerSpots++;}
+            }
+            if (otherPlayerSpots == 0) {score += currentPlayerSpots * currentPlayerSpots * currentPlayerSpots;}
+            if (currentPlayerSpots == 0) {score -= otherPlayerSpots * otherPlayerSpots * otherPlayerSpots;}
+        }
+        return score;
     }
 
     @Override public String moveToString(int move) { return Integer.toString(move); }
@@ -209,26 +225,26 @@ public class ConnectFour extends GameState {
     // ---- Demo: one printed game plus statistics, both engine vs engine ----
 
     public static void main(String[] args) {
-        Engine engine1 = new AlphaBetaEngine();
+        Engine engine1 = new RandomEngine();
         Engine engine2 = new AlphaBetaEngine();
 
         System.out.println("=== One sample game: " + engine1.name() + " vs " + engine2.name() + " ===");
         ConnectFour game = new ConnectFour();
         System.out.println(game + "\n");
         while (!game.isTerminal()) {
-            int m = (game.toMove == 0 ? engine1 : engine2).search(game, 2000).bestMove();
+            int m = (game.toMove == 0 ? engine1 : engine2).search(game, 10000).bestMove();
             requireLegal(game, m);
             System.out.println(SYMBOL[game.currentPlayer()] + " plays " + game.moveToString(m));
             game.makeMove(m);
             System.out.println(game + "\n");
         }
 
-        int games = 0;
+        int games = 10;
         int xWins = 0, oWins = 0, draws = 0;
         for (int i = 0; i < games; i++) {
             ConnectFour g = new ConnectFour();
             while (!g.isTerminal()) {
-                int m = (g.toMove == 0 ? engine1 : engine2).search(g, 2000).bestMove();
+                int m = (g.toMove == 0 ? engine1 : engine2).search(g, 100).bestMove();
                 requireLegal(g, m);
                 g.makeMove(m);
             }
@@ -237,9 +253,8 @@ public class ConnectFour extends GameState {
             else draws++;
         }
         System.out.printf("=== %,d games ===%n", games);
-        System.out.printf("X wins %.1f%%   O wins %.1f%%   draws %.1f%%%n",
+        System.out.printf("Y wins %.1f%%   R wins %.1f%%   draws %.1f%%%n",
                 100.0 * xWins / games, 100.0 * oWins / games, 100.0 * draws / games);
-        System.out.println("(uniformly random play should give about 58.5% / 28.8% / 12.7%)");
     }
 
     private static void requireLegal(GameState s, int move) {

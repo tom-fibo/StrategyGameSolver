@@ -11,6 +11,7 @@ public class AlphaBetaEngine implements Engine {
 
     long nodes; //total nodes searched
     int[][] moveBuf; //move buffer (avoids allocating lots of arrays)
+    int[][] scoreBuf; //move score buffer (holds priorities of moves)
 
     int rootBestMove; //best move from root position (actual move to suggest)
 
@@ -19,7 +20,7 @@ public class AlphaBetaEngine implements Engine {
 
     //Check order optimization
     int[] killers0 = new int[MAX_PLY], killers1 = new int[MAX_PLY];
-    int[][] history = new int[2][moveIdBound];      // halve all entries between searches,
+    int[][] history;      // halve all entries between searches,
                                                     // and whenever one passes 1 << 28 (avoids int overflow)
 
     public String name() {
@@ -98,7 +99,17 @@ public class AlphaBetaEngine implements Engine {
         int n = s.legalMoves(moves);
         int best = -INF;
         int bestMove = moves[0];
+        int[] sc = scoreBuf[ply];
+        //Determine priority score of each move
         for (int i = 0; i < n; i++) {
+            sc[i] = moveScore(s, moves[i], ttMove, ply);
+        };
+        for (int i = 0; i < n; i++) {
+            int besti = i;
+            for (int j = i + 1; j < n; j++) if (sc[j] > sc[besti]) besti = j;
+            int tmpM = moves[i]; moves[i] = moves[besti]; moves[besti] = tmpM;
+            int tmpS = sc[i];    sc[i] = sc[besti];       sc[besti] = tmpS;
+            int m = moves[i];
             s.makeMove(moves[i]);
             int score = -alphaBeta(s, depth - 1, -beta, -alpha, ply + 1);
             s.undoMove();
@@ -107,7 +118,11 @@ public class AlphaBetaEngine implements Engine {
                 bestMove = moves[i];
             }
             if (best > alpha) alpha = best;
-            if (alpha >= beta) break;                      // cutoff
+            if (alpha >= beta) {
+                if (!s.isNoisy(m) && m != killers0[ply]) { killers1[ply] = killers0[ply]; killers0[ply] = m; }
+                history[s.currentPlayer()][m] += depth * depth;
+                break;
+            }
         }
         if (ply == 0) {rootBestMove = bestMove;};
         
@@ -123,6 +138,10 @@ public class AlphaBetaEngine implements Engine {
     public SearchResult search(GameState root, long millis) {
         if (moveBuf == null) {
             moveBuf = new int[MAX_PLY][root.maxMoves()];
+            scoreBuf = new int[MAX_PLY][root.maxMoves()];
+        }
+        if (history == null) {
+            history = new int[2][root.moveIdBound()];
         }
         //int bestScore = alphaBeta(root, 100, -INF, INF, 0);
         //return new SearchResult(rootBestMove, bestScore, 100, nodes, "Alpha-Beta");
