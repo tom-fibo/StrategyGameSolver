@@ -1,0 +1,20 @@
+{
+    // Plain (no Maven/Gradle) Java project: sources in src/, VS Code compiles to bin/.
+    "java.project.sourcePaths": ["src"],
+    "java.project.outputPath": "bin",
+    "java.project.referencedLibraries": ["lib/**/*.jar"],
+    "java.configuration.runtimes": [
+        {
+            "name": "JavaSE-25",
+            "path": "/usr/lib/jvm/java-25-openjdk-amd64",
+            "default": true
+        }
+    ],
+
+    // Applied to the Run/Debug buttons and code lenses.
+    // -ea turns on `assert` statements (used as cheap self-checks).
+    // -Xmx4g gives the transposition table / MCTS tree room to grow.
+    "java.debug.settings.vmArgs": "-ea -Xmx4g",
+    // Run in the integrated terminal so programs can read keyboard input (the advisor REPL).
+    "java.debug.settings.console": "integratedTerminal"
+}

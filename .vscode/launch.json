@@ -1,0 +1,42 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "ConnectFour",
+            "request": "launch",
+            "mainClass": "games.ConnectFour",
+            "projectName": "StrategyGameSolver_1ee19af7"
+        },
+        {
+            "type": "java",
+            "name": "TicTacToe",
+            "request": "launch",
+            "mainClass": "games.TicTacToe",
+            "projectName": "StrategyGameSolver_1ee19af7"
+        },
+        {
+            "type": "java",
+            "name": "AlphaBetaEngine",
+            "request": "launch",
+            "mainClass": "engine.AlphaBetaEngine",
+            "projectName": "StrategyGameSolver_1ee19af7"
+        },
+        {
+            "type": "java",
+            "name": "Run current file",
+            "request": "launch",
+            "mainClass": "${file}",
+            "vmArgs": "-ea -Xmx4g",
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "java",
+            "name": "Main (environment check)",
+            "request": "launch",
+            "mainClass": "Main",
+            "vmArgs": "-ea -Xmx4g",
+            "console": "integratedTerminal"
+        }
+    ]
+}
