@@ -649,7 +649,10 @@ You don't even need a shared stop flag: every thread checks the same `deadline` 
 
 **Warm-up exercise (about 15 min):** write `ThreadsDemo`. Start one task per core. Each task plays random tic-tac-toe games on its own `copy()` of the board for 1 second and returns how many it played. Print each thread's count and the total. You should see about 16 times the single-thread total. Then deliberately break the rule by sharing one board between all threads, and watch it fail.
 
-### 6.4 Root-parallel MCTS (recommended), about 30 lines
+### 6.4 Root-parallel MCTS, about 30 lines
+
+> **Measured in this project (Connect Four, 16 threads vs 1 thread at equal time):** root parallelization *lost*, 11–19 at 200 ms and 5–14 at 600 ms. Each thread's tree was smaller than the single-thread tree, and voting did not make up for the lost depth in a tactical game. `MctsEngine` therefore uses **tree parallelization**: one shared tree, atomic visit and score updates, `synchronized` expansion, and virtual loss. That version won 22–6 at 200 ms. See the class comment in `src/engine/MctsEngine.java`. The root-parallel version below is still the easiest one to understand.
+
 Each thread runs a completely **independent** MCTS from the same position with a different random seed. At the end, add up each root move's visit counts across all threads and play the move with the most. Each tree is a separate opinion, and pooling them is like averaging polls. Chaslot, Winands and van den Herik (2008) found that this simple scheme scales almost perfectly and often beats fancier shared-tree schemes.
 ```java
 // in MctsEngine: return visits per move id instead of a single move

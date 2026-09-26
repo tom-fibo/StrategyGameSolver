@@ -5,6 +5,7 @@ import engine.Engine;
 import engine.GameState;
 import engine.ManualEngine;
 import engine.RandomEngine;
+import engine.SearchResult;
 
 import java.util.Arrays;
 import java.util.Random;
@@ -225,16 +226,17 @@ public class ConnectFour extends GameState {
     // ---- Demo: one printed game plus statistics, both engine vs engine ----
 
     public static void main(String[] args) {
-        Engine engine1 = new RandomEngine();
+        Engine engine1 = new AlphaBetaEngine();
         Engine engine2 = new AlphaBetaEngine();
 
         System.out.println("=== One sample game: " + engine1.name() + " vs " + engine2.name() + " ===");
         ConnectFour game = new ConnectFour();
         System.out.println(game + "\n");
         while (!game.isTerminal()) {
-            int m = (game.toMove == 0 ? engine1 : engine2).search(game, 10000).bestMove();
+            SearchResult searchResult = (game.toMove == 0 ? engine1 : engine2).search(game, 10000);
+            int m = searchResult.bestMove();
             requireLegal(game, m);
-            System.out.println(SYMBOL[game.currentPlayer()] + " plays " + game.moveToString(m));
+            System.out.println(SYMBOL[game.currentPlayer()] + " plays " + game.moveToString(m) + " [Depth: " + searchResult.depth() + ", Evaluation: " + searchResult.score() + ", Nodes: " + searchResult.nodes() + "]");
             game.makeMove(m);
             System.out.println(game + "\n");
         }

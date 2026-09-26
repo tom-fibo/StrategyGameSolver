@@ -11,18 +11,25 @@ public class ManualEngine implements Engine {
         return "Manual";
     }
 
+    /** Prints `prompt` and reads one line from the keyboard (shares this class's Scanner, so no input is lost). */
+    public static String readLine(String prompt) {
+        System.out.print(prompt);
+        if (!INPUT.hasNextLine()) throw new IllegalStateException("Input closed");
+        return INPUT.nextLine().trim();
+    }
+
     public SearchResult search(GameState state, long millis) {
-        int[] moves = new int[state.maxMoves()];
+        /*int[] moves = new int[state.maxMoves()];
         int possibleMoves = state.legalMoves(moves);
 
         StringBuilder choices = new StringBuilder();
         for (int i = 0; i < possibleMoves; i++) {
             if (i > 0) choices.append(", ");
             choices.append(state.moveToString(moves[i]));
-        }
+        }*/
 
         System.out.println(state);
-        System.out.println("Valid moves: " + choices);
+        //System.out.println("Valid moves: " + choices);
         while (true) {
             System.out.print("Your move: ");
             if (!INPUT.hasNextLine()) throw new IllegalStateException("Input closed while waiting for a move");

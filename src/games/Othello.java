@@ -5,6 +5,7 @@ import engine.Engine;
 import engine.GameState;
 import engine.ManualEngine;
 import engine.RandomEngine;
+import engine.SearchResult;
 
 import java.util.Arrays;
 import java.util.Random;
@@ -52,10 +53,11 @@ public class Othello extends GameState {
     private int[] captureBuf = new int[18]; //Stores potential captures for a move
 
     // ---- Undo stack: everything makeMove changes that undoMove can't recompute ----
-    private final int[] moveStack = new int[CELLS];
-    private final int[][] captureStack = new int[CELLS][18]; // (cells captured - not possible to capture more than 18)
-    private final int[] captureCountStack = new int[CELLS]; // (amount of cells captured - used to know how many indexes of capturestack to check)
-    private final int[] winnerStack = new int[CELLS];
+    //(doubled cells in case one player gets stuck & other player is making all moves)
+    private final int[] moveStack = new int[CELLS*2];
+    private final int[][] captureStack = new int[CELLS*2][18]; // (cells captured - not possible to capture more than 18)
+    private final int[] captureCountStack = new int[CELLS*2]; // (amount of cells captured - used to know how many indexes of capturestack to check)
+    private final int[] winnerStack = new int[CELLS*2];
     private int ply = 0;
 
     public Othello() {
@@ -82,6 +84,7 @@ public class Othello extends GameState {
 
     /* captureBuf  */
     public int findCaptures(int[] captureBuf, int move) {
+        if (move >= CELLS) {return 0;}
         int captures = 0;
         for (int dir : new int[] {-9,-8,-7, -1, 1, 7,8,9}) {
             int check = move;
@@ -109,30 +112,36 @@ public class Othello extends GameState {
     @Override
     public int legalMoves(int[] out) {
         if (winner != NONE) return 0;
+        out[0] = 64;
         int n = 0;
         for (int c = 0; c < CELLS; c++) { 
             if ((board[c] == EMPTY) && (findCaptures(captureBuf, c) > 0)) {
                 out[n++] = c;
             };
         }
-        return n;
+        return Math.max(n, 1);
     }
 
     @Override
     public void makeMove(int m) {
-        assert winner == NONE && board[m] == EMPTY : "illegal move (position) " + m + "\n" + this;
+        assert winner == NONE && (m >= CELLS || board[m] == EMPTY) : "illegal move (position) " + m + "\n" + this;
         int captureCount = findCaptures(captureBuf, m);
-        assert captureCount > 0 : "illegal move (no captures) " + m + "\n" + this;
-        board[m] = toMove;
-        hash ^= Z_PIECE[toMove][m] ^ Z_SIDE;
+        assert (captureCount > 0 || m >= CELLS) : "illegal move (no captures) " + m + "\n" + this;
+        if (m < CELLS) {
+            board[m] = toMove;
+            hash ^= Z_PIECE[toMove][m];
+        }
+        hash ^= Z_SIDE;
         for (int i=0; i<captureCount; i++) {
             board[captureBuf[i]] = toMove;
-            hash ^= Z_PIECE[2][m];
+            hash ^= Z_PIECE[2][captureBuf[i]];
         }
         moveStack[ply] = m;
         winnerStack[ply] = winner;
         captureCountStack[ply] = captureCount;
-        captureStack[ply] = captureBuf.clone();
+        for (int i=0; i<captureCount; i++) {
+            captureStack[ply][i] = captureBuf[i];
+        }
         ply++;
         winner = computeWinner(m);
         toMove = 1 - toMove;
@@ -143,35 +152,44 @@ public class Othello extends GameState {
         ply--;
         int m = moveStack[ply];
         toMove = 1 - toMove;             // back to the player who made move m
-        board[m] = EMPTY;
-        hash ^= Z_PIECE[toMove][m] ^ Z_SIDE;
+        if (m < CELLS) {
+            board[m] = EMPTY;
+            hash ^= Z_PIECE[toMove][m];
+        }
+        hash ^= Z_SIDE;
         for (int i=0; i<captureCountStack[ply]; i++) {
             board[captureStack[ply][i]] = 1 - toMove;
-            hash ^= Z_PIECE[2][m];
+            hash ^= Z_PIECE[2][captureBuf[i]];
         }
         winner = winnerStack[ply];
     }
 
     /** Called right after `lastMove` was placed: only lines through it can have just been completed. */
     private int computeWinner(int lastMove) {
-        if (ply < CELLS-4) {
-            for (int i=0; i<CELLS; i++) {
-                if (board[i] == toMove) {
-                    return NONE;
-                }
-            }
+        boolean foundEmpty = false;
+        boolean foundToMove = false;
+        for (int i=0; i<CELLS; i++) {
+            foundToMove = foundToMove || (board[i] == toMove);
+            foundEmpty = foundEmpty || (board[i] == EMPTY);
+        }
+        if (!foundToMove) {
             return 1 - toMove; //Win by claiming all opponent's cells
+        }
+        if (foundEmpty && (moveStack[ply-1] < CELLS || moveStack[ply-2] < CELLS)) {
+            return NONE; //Game not over yet
         }
         int[] scores = new int[2];
         for (int i=0; i<CELLS; i++) {
-            scores[board[i]] += 1;
+            if (board[i] >= 0) {
+                scores[board[i]] += 1;
+            }
         }
         return (scores[0] > scores[1]) ? 0 : ((scores[1] > scores[0]) ? 1 : DRAW);
     }
 
     @Override public int winner() { return winner; }
     @Override public int maxMoves() { return CELLS; }
-    @Override public int moveIdBound() { return CELLS; }
+    @Override public int moveIdBound() { return CELLS + 1; }
     @Override public GameState copy() { return new Othello(this); }
     @Override public long hash() { return hash; }
 
@@ -204,7 +222,7 @@ public class Othello extends GameState {
         } catch (NumberFormatException e) {
             return -1;
         }
-        if (m < 0 || m >= CELLS || board[m] != EMPTY || winner != NONE || findCaptures(captureBuf, m) == 0) return -1;
+        if (m < 0 || m > CELLS || board[m] != EMPTY || winner != NONE || findCaptures(captureBuf, m) == 0) return -1;
         return m;
     }
 
@@ -237,26 +255,27 @@ public class Othello extends GameState {
     // ---- Demo: one printed game plus statistics, both engine vs engine ----
 
     public static void main(String[] args) {
-        Engine engine1 = new AlphaBetaEngine();
-        Engine engine2 = new RandomEngine();
+        Engine engine1 = new RandomEngine();
+        Engine engine2 = new AlphaBetaEngine();
 
         System.out.println("=== One sample game: " + engine1.name() + " vs " + engine2.name() + " ===");
         Othello game = new Othello();
         System.out.println(game + "\n");
         while (!game.isTerminal()) {
-            int m = (game.toMove == 0 ? engine1 : engine2).search(game, 1000).bestMove();
+            SearchResult searchResult = (game.toMove == 0 ? engine1 : engine2).search(game, 1000);
+            int m = searchResult.bestMove();
             requireLegal(game, m);
-            System.out.println(SYMBOL[game.currentPlayer()] + " plays " + game.moveToString(m));
+            System.out.println(SYMBOL[game.currentPlayer()] + " plays " + game.moveToString(m) + " [Depth: " + searchResult.depth() + ", Evaluation: " + searchResult.score() + ", Nodes: " + searchResult.nodes() + "]");
             game.makeMove(m);
             System.out.println(game + "\n");
         }
 
-        int games = 20;
+        int games = 200;
         int xWins = 0, oWins = 0, draws = 0;
         for (int i = 0; i < games; i++) {
             Othello g = new Othello();
             while (!g.isTerminal()) {
-                int m = (g.toMove == 0 ? engine1 : engine2).search(g, 1000).bestMove();
+                int m = (g.toMove == 0 ? engine1 : engine2).search(g, 10000).bestMove();
                 requireLegal(g, m);
                 g.makeMove(m);
             }
@@ -265,7 +284,7 @@ public class Othello extends GameState {
             else draws++;
         }
         System.out.printf("=== %,d games ===%n", games);
-        System.out.printf("Y wins %.1f%%   R wins %.1f%%   draws %.1f%%%n",
+        System.out.printf("W wins %.1f%%   B wins %.1f%%   draws %.1f%%%n",
                 100.0 * xWins / games, 100.0 * oWins / games, 100.0 * draws / games);
     }
 

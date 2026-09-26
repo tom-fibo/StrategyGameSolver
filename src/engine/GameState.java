@@ -53,4 +53,14 @@ public abstract class GameState {
     public boolean isNoisy(int move) { return false; }
 
     public boolean isTerminal() { return winner() != NONE; }
+
+    /**
+     * A random legal move, used by MCTS playouts. Override it (e.g. with rejection sampling) when
+     * generating the full move list is expensive. `buf` has room for maxMoves() moves.
+     */
+    public int randomMove(java.util.SplittableRandom rng, int[] buf) {
+        int n = legalMoves(buf);
+        if (n == 0) throw new IllegalStateException("No legal moves but game not over:\n" + this);
+        return buf[rng.nextInt(n)];
+    }
 }

@@ -3,6 +3,20 @@
     "configurations": [
         {
             "type": "java",
+            "name": "Enclosure",
+            "request": "launch",
+            "mainClass": "games.Enclosure",
+            "projectName": "StrategyGameSolver_1ee19af7"
+        },
+        {
+            "type": "java",
+            "name": "Othello",
+            "request": "launch",
+            "mainClass": "games.Othello",
+            "projectName": "StrategyGameSolver_1ee19af7"
+        },
+        {
+            "type": "java",
             "name": "ConnectFour",
             "request": "launch",
             "mainClass": "games.ConnectFour",

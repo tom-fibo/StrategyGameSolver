@@ -110,8 +110,12 @@ public class AlphaBetaEngine implements Engine {
             int tmpM = moves[i]; moves[i] = moves[besti]; moves[besti] = tmpM;
             int tmpS = sc[i];    sc[i] = sc[besti];       sc[besti] = tmpS;
             int m = moves[i];
+            int before = s.currentPlayer();
             s.makeMove(moves[i]);
-            int score = -alphaBeta(s, depth - 1, -beta, -alpha, ply + 1);
+            // §4.8: only negate when the turn passes to the other player (Enclosure has 2-move turns)
+            int score = (s.currentPlayer() == before)
+                    ?  alphaBeta(s, depth - 1,  alpha,  beta, ply + 1)
+                    : -alphaBeta(s, depth - 1, -beta, -alpha, ply + 1);
             s.undoMove();
             if (score > best) {
                 best = score;
